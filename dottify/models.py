@@ -4,7 +4,7 @@ from django.core.validators import MaxValueValidator, MinValueValidator, RegexVa
 from django.core.exceptions import ValidationError
 from django.contrib.auth.models import User
 from django.utils.translation import gettext_lazy as _
-from datetime import date, timedelta
+from datetime import date, timedelta, datetime
 
 # Create your models here.
 class DottifyUser(models.Model):
@@ -42,9 +42,11 @@ class Album(models.Model):
         ]
     
     def save(self, *args, **kwargs):
-        self.slug = slugify(self.title)
+        if isinstance(self.release_date, str):
+            self.release_date = datetime.strptime(self.release_date, "%Y-%m-%d").date()
         if self.release_date > date.today() + timedelta(days=183):
-            raise ValidationError("Release date cannot be more than 6 months in the future.")
+            raise ValidationError("Release date cannot be more than six months in the future.")
+        self.slug = slugify(self.title)
         super().save(*args, **kwargs)
     
     def __str__(self):
@@ -52,7 +54,7 @@ class Album(models.Model):
 
 class Song(models.Model):
     title = models.CharField(max_length=800)
-    running_time = models.PositiveIntegerField(validators=[MinValueValidator(10)])
+    length = models.PositiveIntegerField(validators=[MinValueValidator(10)])
     position = models.PositiveIntegerField(null=True, editable=False)
     album = models.ForeignKey(Album, on_delete=models.CASCADE, related_name='songs')
 

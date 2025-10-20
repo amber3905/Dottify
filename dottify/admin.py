@@ -23,7 +23,7 @@ class AlbumAdmin(admin.ModelAdmin):
 
 @admin.register(Song)
 class SongAdmin(admin.ModelAdmin):
-    list_display = ('title', 'album', 'position', 'running_time')
+    list_display = ('title', 'album', 'position', 'length')
     list_filter = ('album',)
     search_fields = ('title',)
     readonly_fields = ('position',)
