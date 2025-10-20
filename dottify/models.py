@@ -29,23 +29,23 @@ class Album(models.Model):
     artist_name = models.CharField(max_length=800)
     artist_account = models.ForeignKey(DottifyUser, null=True, blank=True, on_delete=models.SET_NULL)
     retail_price = models.DecimalField(max_digits=5, decimal_places=2,
-                                       validators=[MinValueValidator(0), MaxValueValidator(999.999)])
+                                       validators=[MinValueValidator(0), MaxValueValidator(999.99)])
     format = models.CharField(max_length=4, choices=AlbumFormat.choices, null=True, blank=True)
     release_date = models.DateField()
-    cover_image = models.ImageField(blank=True, null=True, default=default_cover)
+    cover_image = models.ImageField(blank=True, null=True, default='no_cover.jpg')
     slug = models.SlugField(null=True, blank=True)
 
     class Meta:
         constraints = [
-            models.UniqueConstraint(fields=['title', 'artist_name', 'format'],
-                                    name='unique_album_per_artist_format')
+            models.UniqueConstraint(fields=['artist_name', 'title', 'format'],
+                                    name='unique_album_artist_format_title')
         ]
     
     def save(self, *args, **kwargs):
         if isinstance(self.release_date, str):
             self.release_date = datetime.strptime(self.release_date, "%Y-%m-%d").date()
-        if self.release_date > date.today() + timedelta(days=183):
-            raise ValidationError("Release date cannot be more than six months in the future.")
+        if self.release_date > date.today() + timedelta(days=180):
+            raise ValidationError("Release date cannot be more than six months (180 days) in the future.")
         self.slug = slugify(self.title)
         super().save(*args, **kwargs)
     
@@ -55,7 +55,7 @@ class Album(models.Model):
 class Song(models.Model):
     title = models.CharField(max_length=800)
     length = models.PositiveIntegerField(validators=[MinValueValidator(10)])
-    position = models.PositiveIntegerField(null=True, editable=False)
+    position = models.PositiveIntegerField(null=True, editable=False, blank=True)
     album = models.ForeignKey(Album, on_delete=models.CASCADE, related_name='songs')
 
     class Meta:
@@ -82,7 +82,11 @@ class Playlist(models.Model):
     name = models.CharField(max_length=800)
     created_at = models.DateTimeField(auto_now_add=True)
     songs = models.ManyToManyField(Song)
-    visibility = models.IntegerField(choices=VisibilityLevel.choices, default=0)
+    visibility = models.PositiveSmallIntegerField(default=0, choices=[
+        (0, 'Hidden'),
+        (1, 'Unlisted'),
+        (2, 'Public')
+    ])
     owner = models.ForeignKey(DottifyUser, on_delete=models.CASCADE)
 
     def __str__(self):
