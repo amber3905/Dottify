@@ -5,6 +5,7 @@ from django.core.exceptions import ValidationError
 from django.contrib.auth.models import User
 from django.utils.translation import gettext_lazy as _
 from datetime import date, timedelta, datetime
+from decimal import Decimal
 
 # Create your models here.
 class DottifyUser(models.Model):
@@ -29,7 +30,7 @@ class Album(models.Model):
     artist_name = models.CharField(max_length=800)
     artist_account = models.ForeignKey(DottifyUser, null=True, blank=True, on_delete=models.SET_NULL)
     retail_price = models.DecimalField(max_digits=5, decimal_places=2,
-                                       validators=[MinValueValidator(0), MaxValueValidator(999.99)])
+                                       validators=[MinValueValidator(Decimal('0.00')), MaxValueValidator(Decimal('999.99'))])
     format = models.CharField(max_length=4, choices=AlbumFormat.choices, null=True, blank=True)
     release_date = models.DateField()
     cover_image = models.ImageField(blank=True, null=True, default='no_cover.jpg')
