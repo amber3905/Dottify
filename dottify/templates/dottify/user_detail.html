@@ -1,0 +1,16 @@
+{% extends "dottify/base.html" %}
+{% block title %}{{ duser.display_name }}{% endblock %}
+{% block content %}
+<h2>{{ duser.display_name }}</h2>
+
+<h3>Playlists</h3>
+{% if playlists %}
+<ul>
+    {% for pl in playlists %}
+    <li>{{ pl.name }} ({{ pl.get_visibility_display }})</li>
+    {% endfor %}
+</ul>
+{% else %}
+<p>This user has no playlists yet.</p>
+{% endif %}
+{% endblock %}

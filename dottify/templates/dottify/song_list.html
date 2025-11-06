@@ -1,0 +1,15 @@
+{% extends "dottify/base.html" %}
+{% block title %}Songs{% endblock %}
+{% block content %}
+<h2>Songs</h2>
+<p>Total results found: {{ count }}</p>
+{% if songs %}
+<ul>
+  {% for song in songs %}
+  <li><a href="/songs/{{ song.id }}/">{{ song.title }}</a></li>
+  {% endfor %}
+</ul>
+{% else %}
+<p>No songs available.</p>
+{% endif %}
+{% endblock %}

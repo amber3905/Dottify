@@ -1,0 +1,28 @@
+{% extends "dottify/base.html" %}
+{% block title %}Dottify - Home{% endblock %}
+{% block content %}
+<h2>Albums</h2>
+{% if albums %}
+<ul>
+    {% for album in albums %}
+    <li>
+        <a href="/albums/{{ album.id }}/">{{ album.title }}</a>
+        <small>by {{ album.artist_name }}</small>
+    </li>
+    {% endfor %}
+</ul>
+{% else %}
+<p>No albums found.</p>
+{% endif %}
+
+<h2>Playlists</h2>
+{% if playlists %}
+<ul>
+    {% for pl in playlists %}
+    <li>{{ pl.name }} by {{ pl.owner.display_name }}</li>
+    {% endfor %}
+</ul>
+{% else %}
+<p>No playlists available.</p>
+{% endif %}
+{% endblock %}

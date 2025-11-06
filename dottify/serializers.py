@@ -1,42 +1,40 @@
-# Write your API serialisers here.
 from rest_framework import serializers
-from .models import (
-    DottifyUser, Album, Song, Playlist, Rating, Comment
-)
+from .models import Album, Song, Playlist, DottifyUser
 
-class DottifyUserSerializer(serializers.ModelSerializer):
-    class Meta:
-        model = DottifyUser
-        fields = ['id', 'display_name', 'user']
 
 class SongSerializer(serializers.ModelSerializer):
     class Meta:
         model = Song
-        fields = ['id', 'title', 'length', 'position', 'album']
-        read_only_fields = ['position']
+        fields = ['id', 'title', 'length', 'album']
+
 
 class AlbumSerializer(serializers.ModelSerializer):
-    songs = serializers.StringRelatedField(many = True, read_only = True)
+    song_set = SongSerializer(many=True, read_only=True)
+
     class Meta:
         model = Album
         fields = [
-            'id', 'title', 'artist_name', 'artist_account',
-            'retail_price', 'format', 'release_date',
-            'cover_image', 'slug', 'songs'
+            'id',
+            'cover_image',
+            'title',
+            'artist_name',
+            'retail_price',
+            'format',
+            'release_date',
+            'song_set',
         ]
-        read_only_fields = ['slug']
+
 
 class PlaylistSerializer(serializers.ModelSerializer):
+    owner = serializers.PrimaryKeyRelatedField(queryset=DottifyUser.objects.all())
+    songs = serializers.PrimaryKeyRelatedField(queryset=Song.objects.all(), many=True, required=False)
+
     class Meta:
         model = Playlist
-        fields = ['id', 'name', 'created_at', 'songs', 'visibility', 'owner']
+        fields = ['id', 'songs', 'owner', 'name', 'created_at', 'visibility']
 
-class RatingSerializer(serializers.ModelSerializer):
-    class Meta:
-        model = Rating
-        fields = ['id', 'stars']
 
-class CommentSerializer(serializers.ModelSerializer):
+class DottifyUserSerializer(serializers.ModelSerializer):
     class Meta:
-        model = Comment
-        fields = ['id', 'comment_text']
+        model = DottifyUser
+        fields = ['id', 'user', 'display_name']

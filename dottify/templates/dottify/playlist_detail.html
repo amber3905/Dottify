@@ -1,0 +1,17 @@
+{% extends "dottify/base.html" %}
+{% block title %}Playlist: {{ playlist.name }}{% endblock %}
+{% block content %}
+<h2>{{ playlist.name }}</h2>
+<p>Owner: {{ playlist.owner.display_name }}</p>
+
+<h3>Comments</h3>
+{% if comments %}
+<ul>
+  {% for c in comments %}
+  <li><strong>{{ c.user.display_name }}</strong>: {{ c.text }}</li>
+  {% endfor %}
+</ul>
+{% else %}
+<p>No comments for this playlist.</p>
+{% endif %}
+{% endblock %}

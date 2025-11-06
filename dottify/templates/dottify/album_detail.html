@@ -1,0 +1,30 @@
+{% extends "dottify/base.html" %}
+{% block title %}{{ album.title }}{% endblock %}
+{% block content %}
+<h2>{{ album.title }}</h2>
+
+{% if album.cover_image %}
+  <img src="/app-media/{{ album.cover_image }}" alt="{{ album.title }}" style="max-width:200px; border-radius: 8px; box-shadow: 0 0 5px #ccc;">
+{% else %}
+  <p><em>No cover image available.</em></p>
+{% endif %}
+
+<p><strong>Artist:</strong> {{ album.artist_name }}</p>
+<p><strong>Format:</strong> {{ album.get_format_display }}</p>
+<p><strong>Release Date:</strong> {{ album.release_date|default:"Unknown" }}</p>
+<p><strong>Price:</strong> {{ album.retail_price|default:"N/A" }}</p>
+
+<p>Average rating of all time: {{ avg_all|default:0.0|floatformat:1 }}</p>
+<p>Recent rating average (last 7 days): {{ avg_recent|default:0.0|floatformat:1 }}</p>
+
+<h3>Songs</h3>
+{% if songs %}
+<ul>
+  {% for song in songs %}
+  <li><a href="/songs/{{ song.id }}/">{{ song.title }}</a> ({{ song.length }}s)</li>
+  {% endfor %}
+</ul>
+{% else %}
+<p>No songs added yet.</p>
+{% endif %}
+{% endblock %}

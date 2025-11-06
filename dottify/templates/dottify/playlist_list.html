@@ -1,0 +1,19 @@
+{% extends "dottify/base.html" %}
+{% block title %}Playlists{% endblock %}
+{% block content %}
+<h2>Playlists</h2>
+
+{% if playlists %}
+<ul>
+  {% for pl in playlists %}
+  <li>
+    <a href="/playlists/{{ pl.id }}/">{{ pl.name }}</a>
+    (owner: {{ pl.owner.display_name }})
+  </li>
+  {% endfor %}
+</ul>
+{% else %}
+<p>No playlists found.</p>
+{% endif %}
+
+{% endblock %}

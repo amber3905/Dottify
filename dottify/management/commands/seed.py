@@ -1,62 +1,117 @@
-# Seeding carries no marks but may help you test your work.
+import csv
+import os
+import shutil
+
+from django.conf import settings
 from django.core.management.base import BaseCommand
-from django.contrib.auth.models import User
-from django.utils import timezone
-from datetime import date, timedelta
-from dottify.models import (
-    DottifyUser, Album, Song, Playlist, Rating, Comment
-)
+from django.utils.text import slugify
+
+from dottify.models import Album, Song
+
 
 class Command(BaseCommand):
-    help = 'Insert sample data into database for user testing'
+    help = "Seed the database with sample albums, songs, and cover images from CSV files."
 
     def handle(self, *args, **options):
-        self.stdout.write(self.style.SUCCESS('Starting database seeding...'))
+        # data directory: dottify/management/data/
+        data_dir = os.path.join(settings.BASE_DIR, "dottify", "management", "data")
+        albums_csv = os.path.join(data_dir, "albums.csv")
+        songs_csv = os.path.join(data_dir, "songs.csv")
+        images_dir = os.path.join(data_dir, "images")
 
-        user, _ = User.objects.get_or_create(username='amber', defaults={'email': 'amber@example.com'})
-        user.set_password('12345')
-        user.save()
-        dottify_user, _ = DottifyUser.objects.get_or_create(user=user, display_name="Amber Waves")
+        if not os.path.exists(albums_csv):
+            self.stdout.write(self.style.ERROR(f"albums.csv not found in {data_dir}"))
+            return
 
-        album1, _ = Album.objects.get_or_create(
-            title="Midnight Echoes",
-            artist_name="Amber Waves",
-            artist_account=dottify_user,
-            retail_price=9.99,
-            format="SNGL",
-            release_date=date.today() - timedelta(days=7)
-        )
-        album2, _ = Album.objects.get_or_create(
-            title="Electric Skies",
-            artist_name="Amber Waves",
-            artist_account=dottify_user,
-            retail_price=11.49,
-            format="DLUX",
-            release_date=date.today()
-        )
+        # make sure media/albums/ exists
+        media_albums_dir = os.path.join(settings.MEDIA_ROOT, "albums")
+        os.makedirs(media_albums_dir, exist_ok=True)
 
-        song1, _ = Song.objects.get_or_create(title="Dreamlight", length=180, album=album1)
-        song2, _ = Song.objects.get_or_create(title="Neon Drift", length=200, album=album1)
-        song3, _ = Song.objects.get_or_create(title="Voltage", length=220, album=album2)
+        # ------------------------------------------------------------------
+        # 1) LOAD ALBUMS  (ID, Artist, Album, Released, Price, Format)
+        # ------------------------------------------------------------------
+        self.stdout.write("Loading albums...")
+        id_to_album = {}  # so we can attach songs later by numeric ID
 
-        playlist, _ = Playlist.objects.get_or_create(
-            name="Chill Vibes",
-            owner=dottify_user,
-            visibility=2
-        )
-        playlist.songs.set([song1, song2])
-        playlist.save()
+        with open(albums_csv, newline="", encoding="utf-8") as f:
+            reader = csv.DictReader(f)
+            for i, row in enumerate(reader, start=1):
+                album_id = row.get("ID")
+                title = row.get("Album")
+                artist = row.get("Artist") or "Unknown"
+                released = row.get("Released") or None
+                price = row.get("Price") or None
+                fmt = row.get("Format") or "ALB"
 
-        Rating.objects.get_or_create(stars=4.5)
-        Rating.objects.get_or_create(stars=3.0)
+                if not title:
+                    self.stdout.write(self.style.WARNING(f"Skipping row {i}: no Album name"))
+                    continue
 
-        Comment.objects.get_or_create(comment_text="Amazing album!")
-        Comment.objects.get_or_create(comment_text="Love the vibe")
+                album_obj, created = Album.objects.get_or_create(
+                    title=title,
+                    artist_name=artist,
+                    defaults={
+                        "release_date": released,
+                        "retail_price": price,
+                        "format": fmt,
+                    },
+                )
 
-        self.stdout.write(self.style.SUCCESS('Seeding complete!'))
-        self.stdout.write("You can now test API endpoints such as:")
-        self.stdout.write("  - /api/users/")
-        self.stdout.write("  - /api/albums/")
-        self.stdout.write("  - /api/albums/1/songs/")
-        self.stdout.write("  - /api/playlists/")
-        self.stdout.write("  - /api/comments/")
+                # try to match an image: slug of title + startswith
+                if os.path.isdir(images_dir):
+                    wanted_slug = slugify(title)
+                    # look for any file in images_dir that starts with that slug
+                    for fname in os.listdir(images_dir):
+                        if fname.startswith(wanted_slug):
+                            src_img = os.path.join(images_dir, fname)
+                            dest_img = os.path.join(media_albums_dir, fname)
+                            shutil.copyfile(src_img, dest_img)
+                            album_obj.cover_image = f"albums/{fname}"
+                            album_obj.save()
+                            break  # stop at first match
+
+                if album_id:
+                    id_to_album[album_id] = album_obj
+
+        self.stdout.write(self.style.SUCCESS("✅ Albums loaded."))
+
+        # ------------------------------------------------------------------
+        # 2) LOAD SONGS  (Album, Song, Duration)
+        # ------------------------------------------------------------------
+        if not os.path.exists(songs_csv):
+            self.stdout.write(self.style.WARNING("songs.csv not found, skipping songs."))
+            return
+
+        self.stdout.write("Loading songs...")
+        with open(songs_csv, newline="", encoding="utf-8") as f:
+            reader = csv.DictReader(f)
+            for i, row in enumerate(reader, start=1):
+                album_ref = row.get("Album")      # in your file this is the numeric ID
+                title = row.get("Song")
+                duration = row.get("Duration") or "0"
+
+                if not title:
+                    self.stdout.write(self.style.WARNING(f"Skipping song row {i}: no Song name"))
+                    continue
+
+                # your songs.csv uses the album's ID (e.g. "1") not the name
+                album_obj = id_to_album.get(str(album_ref))
+                if not album_obj:
+                    self.stdout.write(
+                        self.style.WARNING(f"Skipping song '{title}': album ID {album_ref} not found")
+                    )
+                    continue
+
+                try:
+                    length = int(duration)
+                except ValueError:
+                    length = 0
+
+                Song.objects.get_or_create(
+                    title=title,
+                    album=album_obj,
+                    defaults={"length": length},
+                )
+
+        self.stdout.write(self.style.SUCCESS("✅ Songs loaded."))
+        self.stdout.write(self.style.SUCCESS("🎵 Seeding complete."))

@@ -1,0 +1,14 @@
+{% extends "dottify/base.html" %}
+{% block title %}Add Album{% endblock %}
+{% block content %}
+<h2>Add Album</h2>
+
+<!-- add this line so the test finds it -->
+<p>Album create page</p>
+
+<form method="post" enctype="multipart/form-data">
+  {% csrf_token %}
+  {{ form.as_p }}
+  <button type="submit">Save Album</button>
+</form>
+{% endblock %}

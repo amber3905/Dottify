@@ -1,0 +1,20 @@
+{% extends "dottify/base.html" %}
+{% block title %}All Albums{% endblock %}
+{% block content %}
+<h2>All Albums</h2>
+
+{% if albums %}
+<ul>
+    {% for album in albums %}
+    <li>
+        <a href="/albums/{{ album.id }}/">{{ album.title }}</a> – {{ album.artist_name }}
+        {% if album.retail_price %}
+            (£{{ album.retail_price }})
+        {% endif %}
+    </li>
+    {% endfor %}
+</ul>
+{% else %}
+<p>No albums available.</p>
+{% endif %}
+{% endblock %}

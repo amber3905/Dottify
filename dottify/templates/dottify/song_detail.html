@@ -1,0 +1,8 @@
+{% extends "dottify/base.html" %}
+{% block title %}{{ song.title }}{% endblock %}
+{% block content %}
+<h2>{{ song.title }}</h2>
+<p><strong>Album:</strong> <a href="/albums/{{ song.album.id }}/">{{ song.album.title }}</a></p>
+<p><strong>Length:</strong> {{ song.length }} seconds</p>
+<p><strong>Artist:</strong> {{ song.album.artist_name }}</p>
+{% endblock %}
