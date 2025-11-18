@@ -15,7 +15,6 @@ class DottifyModelTests(TestCase):
         self.album = Album.objects.create(
             title='Test Album',
             artist_name='Some Artist',
-            # retail_price is allowed to be null
         )
         self.song1 = Song.objects.create(title='Song 1', album=self.album, length=180)
         self.song2 = Song.objects.create(title='Song 2', album=self.album, length=200)

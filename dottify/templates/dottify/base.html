@@ -1,26 +1,42 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <title>{% block title %}Dottify{% endblock %}</title>
-    <style>
-        body { font-family: Arial, sans-serif; margin: 2rem; }
-        header { border-bottom: 1px solid #ccc; margin-bottom: 1rem; padding-bottom: 0.5rem; }
-        a { text-decoration: none; color: #1a73e8; }
-        a:hover { text-decoration: underline; }
-    </style>
+  <meta charset="UTF-8">
+  <title>{% block title %}Dottify{% endblock %}</title>
+  <style>
+    body { font-family: Arial, sans-serif; margin: 2rem; }
+    header { border-bottom: 1px solid #ccc; margin-bottom: 1rem; padding-bottom: 0.5rem; }
+    a { color: #1a73e8; text-decoration: none; }
+    a:hover { text-decoration: underline; }
+    .right { float: right; }
+  </style>
 </head>
 <body>
-    <header>
-        <h1><a href="/">🎵 Dottify</a></h1>
-        <nav>
-            <a href="/albums/">Albums</a> |
-            <a href="/songs/new/">Add Song</a> |
-            <a href="/albums/new/">Add Album</a>
-        </nav>
-    </header>
+  <header>
+    <h1><a href="/">🎵 Dottify</a></h1>
+    <nav>
+      <a href="/albums/">Albums</a> |
+      <a href="/songs/">Songs</a> |
+      <a href="/playlists/">Playlists</a> |
+      <a href="/help/">Help</a>
 
-    {% block content %}
-    {% endblock %}
+      <span class="right">
+        {% if user.is_authenticated %}
+            Logged in as {{ user.username }}
+            <form method="post" action="/accounts/logout/" style="display:inline;">
+                {% csrf_token %}
+                <button type="submit"
+                        style="background:none;border:none;color:#1a73e8;cursor:pointer;padding:0;">
+                    Logout
+                </button>
+            </form>
+        {% else %}
+            <a href="/accounts/login/">Login</a>
+        {% endif %}
+      </span>
+    </nav>
+  </header>
+
+  {% block content %}{% endblock %}
 </body>
 </html>

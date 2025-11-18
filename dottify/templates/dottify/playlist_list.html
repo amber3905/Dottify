@@ -8,12 +8,12 @@
   {% for pl in playlists %}
   <li>
     <a href="/playlists/{{ pl.id }}/">{{ pl.name }}</a>
-    (owner: {{ pl.owner.display_name }})
+    (owner: {{ pl.owner.display_name }},
+     visibility: {% if pl.visibility == 2 %}Public{% elif pl.visibility == 1 %}Unlisted{% else %}Private{% endif %})
   </li>
   {% endfor %}
 </ul>
 {% else %}
 <p>No playlists found.</p>
 {% endif %}
-
 {% endblock %}
