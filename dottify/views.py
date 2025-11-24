@@ -263,7 +263,7 @@ def user_detail_redirect(request, user_id):
     accepting the shorter 'users/<id>/' form.
     """
     duser = get_object_or_404(DottifyUser, pk=user_id)
-    target_slug = duser.display_name.lower()
+    target_slug = slugify(duser.display_name)
     return redirect('user-detail-slug', user_id=user_id, slug=target_slug)
 
 
@@ -276,11 +276,14 @@ def user_detail_slug(request, user_id, slug):
     """
     duser = get_object_or_404(DottifyUser, pk=user_id)
     playlists = duser.playlist_set.all()
-    correct_slug = duser.display_name.lower()
+    correct_slug = slugify(duser.display_name)
     if slug != correct_slug:
         return redirect('user-detail-slug', user_id=user_id, slug=correct_slug)
-    return render(request, 'dottify/user_detail.html', {'duser': duser, 'playlists': playlists})
-
+    return render(
+        request,
+        'dottify/user_detail.html',
+        {'duser': duser, 'playlists': playlists},
+    )
 
 class HelpForm(forms.Form):
     """

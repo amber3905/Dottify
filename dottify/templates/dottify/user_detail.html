@@ -1,16 +1,55 @@
 {% extends "dottify/base.html" %}
+
 {% block title %}{{ duser.display_name }}{% endblock %}
+
 {% block content %}
 <h2>{{ duser.display_name }}</h2>
 
 <h3>Playlists</h3>
 {% if playlists %}
-<ul>
-    {% for pl in playlists %}
-    <li>{{ pl.name }} ({{ pl.get_visibility_display }})</li>
-    {% endfor %}
-</ul>
+    <ul>
+        {% for pl in playlists %}
+            <li>
+                <strong>{{ pl.name }}</strong> ({{ pl.get_visibility_display }})
+                
+                {# Songs in this playlist #}
+                <p><em>Songs:</em></p>
+                {% if pl.songs.all %}
+                    <ul>
+                        {% for song in pl.songs.all %}
+                            <li>{{ song.title }} – {{ song.album.title }}</li>
+                        {% empty %}
+                            <li>No songs in this playlist.</li>
+                        {% endfor %}
+                    </ul>
+                {% else %}
+                    <p>No songs in this playlist.</p>
+                {% endif %}
+
+                {# Comments on this playlist #}
+                <p><em>Comments:</em></p>
+                {% if pl.comment_set.all %}
+                    <ul>
+                        {% for comment in pl.comment_set.all %}
+                            <li>
+                                {% if comment.user %}
+                                    {{ comment.user.display_name }}:
+                                {% else %}
+                                    Anonymous:
+                                {% endif %}
+                                {{ comment.text }}
+                            </li>
+                        {% empty %}
+                            <li>No comments for this playlist.</li>
+                        {% endfor %}
+                    </ul>
+                {% else %}
+                    <p>No comments for this playlist.</p>
+                {% endif %}
+            </li>
+        {% endfor %}
+    </ul>
 {% else %}
-<p>This user has no playlists yet.</p>
+    <p>This user has no playlists yet.</p>
 {% endif %}
 {% endblock %}
