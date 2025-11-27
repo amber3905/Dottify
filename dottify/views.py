@@ -216,22 +216,31 @@ def song_delete(request, song_id):
 
 def playlist_list(request):
     """
-    List playlists with visibility rules.
+    List playlists according to visibility and user roles.
 
-    - Anonymous users: public playlists only.
-    - Logged-in users: public playlists and their own playlists.
+    - Anonymous users: see public playlists only (visibility = 2).
+    - Logged-in users (Normal/Artist): see public playlists and playlists they own.
+    - DottifyAdmin users: see all playlists regardless of visibility or ownership.
     """
-    duser = get_dottify_user_or_none(request.user)
-
-    if duser:
-        playlists = Playlist.objects.filter(
-            Q(visibility=2) | Q(owner=duser)
-        ).distinct()
+    playlists = Playlist.objects.all()
+    user = request.user
+    if not user.is_authenticated:
+        playlists = playlists.filter(visibility=2)
     else:
-        playlists = Playlist.objects.filter(visibility=2)
-
-    return render(request, 'dottify/playlist_list.html', {'playlists': playlists})
-
+        try:
+            duser = DottifyUser.objects.get(user=user)
+        except DottifyUser.DoesNotExist:
+            duser = None
+        if user.is_superuser or user.groups.filter(name="DottifyAdmin").exists():
+            pass
+        else:
+            if duser is not None:
+                playlists = playlists.filter(
+                    Q(visibility=2) | Q(owner=duser)
+                )
+            else:
+                playlists = playlists.filter(visibility=2)
+    return render(request, "dottify/playlist_list.html", {"playlists": playlists})
 
 def playlist_detail(request, playlist_id):
     """
