@@ -33,10 +33,18 @@ class Album(models.Model):
     """
     Represents a single album / EP / single in the catalogue.
     """
+    FORMAT_SNGL = "SNGL"
+    FORMAT_RMST = "RMST"
+    FORMAT_DLUX = "DLUX"
+    FORMAT_COMP = "COMP"
+    FORMAT_LIVE = "LIVE"
+
     FORMAT_CHOICES = [
-        ('ALB', 'Album'),
-        ('SNGL', 'Single'),
-        ('EP', 'EP'),
+        (FORMAT_SNGL, "Single"),
+        (FORMAT_RMST, "Remaster"),
+        (FORMAT_DLUX, "Deluxe Edition"),
+        (FORMAT_COMP, "Compilation"),
+        (FORMAT_LIVE, "Live Recording"),
     ]
 
     title = models.CharField(max_length=200)

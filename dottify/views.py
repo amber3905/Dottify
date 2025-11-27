@@ -1,7 +1,7 @@
 from datetime import timedelta
 from django.utils import timezone
 from django.shortcuts import render, get_object_or_404, redirect
-from django.http import HttpResponse, HttpResponseRedirect
+from django.http import HttpResponse, HttpResponseRedirect, HttpResponseForbidden
 from django.template.defaultfilters import slugify
 from django.contrib.auth.decorators import login_required
 from django.db.models import Q
@@ -56,7 +56,7 @@ def index(request):
         )
     if is_artist:
         if duser:
-            albums = duser.album_set.all()
+            albums = Album.objects.filter(artist_name=duser.display_name)
         else:
             albums = Album.objects.none()
         return render(
@@ -64,6 +64,7 @@ def index(request):
             'dottify/index.html',
             {'albums': albums},
         )
+
     if duser:
         playlists = duser.playlist_set.all()
     else:
@@ -87,9 +88,16 @@ def album_create(request):
     """
     Create view for albums.
 
-    Login is required; this is enforced at the view layer rather than
-    the router so the tests can assert on status codes.
+    User must be logged in AND in the Artist or DottifyAdmin group.
+
+    - If not in either group, return 403 Forbidden.
+    - If allowed, show the form on GET and create the album on POST.
     """
+    user = request.user
+    is_artist = user.groups.filter(name="Artist").exists()
+    is_dottify_admin = user.groups.filter(name="DottifyAdmin").exists()
+    if not (is_artist or is_dottify_admin):
+        return HttpResponseForbidden("Forbidden")
     if request.method == "POST":
         form = AlbumForm(request.POST, request.FILES)
         if form.is_valid():
@@ -98,7 +106,6 @@ def album_create(request):
     else:
         form = AlbumForm()
     return render(request, 'dottify/album_form.html', {'form': form})
-
 
 def album_search(request):
     """

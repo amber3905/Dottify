@@ -1,5 +1,5 @@
 from django.test import TestCase
-from django.contrib.auth.models import User
+from django.contrib.auth.models import User, Group
 
 from dottify.models import Album, Song, Playlist, DottifyUser
 
@@ -48,10 +48,17 @@ class DottifyViewTests(TestCase):
         self.assertIn("Test Album", resp.content.decode())
 
     def test_album_create_route_exists(self):
+        artist_group, _ = Group.objects.get_or_create(name="Artist")
+        self.user.groups.add(artist_group)
         self.client.login(username="alice", password="pw123")
         resp = self.client.get("/albums/new/")
         self.assertEqual(resp.status_code, 200)
         self.assertIn("Album create page", resp.content.decode())
+
+    def test_album_create_forbidden_for_non_artist(self):
+        self.client.login(username="alice", password="pw123")
+        resp = self.client.get("/albums/new/")
+        self.assertEqual(resp.status_code, 403)
 
     def test_user_detail_redirects_to_lowercase(self):
         wrong_slug = "AnNiEmUsIcLoVeR92"
