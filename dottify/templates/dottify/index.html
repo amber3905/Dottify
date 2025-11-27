@@ -25,4 +25,11 @@
 {% else %}
 <p>No playlists available.</p>
 {% endif %}
+
+{% if songs %}
+  <h2>Songs</h2>
+  {% for s in songs %}
+    <p>{{ s.title }}</p>
+  {% endfor %}
+{% endif %}
 {% endblock %}

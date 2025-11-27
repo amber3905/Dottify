@@ -25,26 +25,54 @@ def get_dottify_user_or_none(user):
 
 def index(request):
     """
-    Homepage showing albums and playlists.
+    Homepage route with role-based content.
 
-    Authorisation rules (Sheet C / clarifications):
-    - If user is NOT logged in: show only PUBLIC playlists.
-    - If user IS logged in: show public playlists AND their own playlists.
-    Albums are always listed for all users.
+    - Anonymous users: show all albums and public playlists only.
+    - Logged-in normal users: show only their own playlists.
+    - Artist users (in the 'Artist' group): show only their own albums.
+    - DottifyAdmin users (in the 'DottifyAdmin' group or superuser):
+      show all albums, songs, and playlists.
     """
-    duser = get_dottify_user_or_none(request.user)
-
-    if duser:
-        playlists = Playlist.objects.filter(
-            Q(visibility=2) | Q(owner=duser)
-        ).distinct()
-    else:
+    user = request.user
+    duser = get_dottify_user_or_none(user)
+    if not user.is_authenticated:
+        albums = Album.objects.all()
         playlists = Playlist.objects.filter(visibility=2)
-
-    albums = Album.objects.all()
-    context = {'playlists': playlists, 'albums': albums}
-    return render(request, 'dottify/index.html', context)
-
+        return render(
+            request,
+            'dottify/index.html',
+            {'albums': albums, 'playlists': playlists},
+        )
+    is_dottify_admin = user.is_superuser or user.groups.filter(name="DottifyAdmin").exists()
+    is_artist = user.groups.filter(name="Artist").exists()
+    if is_dottify_admin:
+        albums = Album.objects.all()
+        playlists = Playlist.objects.all()
+        songs = Song.objects.all()
+        return render(
+            request,
+            'dottify/index.html',
+            {'albums': albums, 'playlists': playlists, 'songs': songs},
+        )
+    if is_artist:
+        if duser:
+            albums = duser.album_set.all()
+        else:
+            albums = Album.objects.none()
+        return render(
+            request,
+            'dottify/index.html',
+            {'albums': albums},
+        )
+    if duser:
+        playlists = duser.playlist_set.all()
+    else:
+        playlists = Playlist.objects.none()
+    return render(
+        request,
+        'dottify/index.html',
+        {'playlists': playlists},
+    )
 
 def album_list(request):
     """
