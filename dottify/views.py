@@ -175,9 +175,7 @@ def album_detail_with_slug(request, album_id, slug):
 def album_edit(request, album_id):
     """
     Edit an existing album.
-
     Rules (Sheet D):
-
     - User must be logged in (enforced by @login_required).
     - User must be in the Artist or DottifyAdmin group.
     - If user is in Artist group, the album must belong to them:
@@ -190,40 +188,49 @@ def album_edit(request, album_id):
     album = get_object_or_404(Album, pk=album_id)
     user = request.user
     duser = get_dottify_user_or_none(user)
-
     is_artist = user.groups.filter(name="Artist").exists()
     is_dottify_admin = user.is_superuser or user.groups.filter(name="DottifyAdmin").exists()
-
-    # Must be Artist or DottifyAdmin
     if not (is_artist or is_dottify_admin):
         return HttpResponse("Forbidden", status=403)
-
-    # If Artist, album must "belong" to them
-    # (artist_name matches their DottifyUser display_name)
     if is_artist and (not duser or album.artist_name != duser.display_name):
         return HttpResponse("Forbidden", status=403)
-
     if request.method == "POST":
         form = AlbumForm(request.POST, request.FILES, instance=album)
         if form.is_valid():
-            # Re-check on submit before saving (spec says check on POST too)
             if is_artist and (not duser or album.artist_name != duser.display_name):
                 return HttpResponse("Forbidden", status=403)
             form.save()
             return redirect('album-detail-id', album_id=album.id)
     else:
         form = AlbumForm(instance=album)
-
     return render(request, 'dottify/album_form.html', {'form': form, 'album': album})
 
 @login_required
 def album_delete(request, album_id):
     """
-    Placeholder delete endpoint. Only checks that the album exists.
+    Delete an existing album.
+    Rules (Sheet D):
+    - User must be logged in.
+    - User must be in the DottifyAdmin group OR be the artist who owns the album.
+      An album is considered to belong to an artist if:
+        album.artist_name == DottifyUser.display_name
+    - Permission is checked on both GET (show confirmation)
+      and POST (perform delete).
+    - If user is not allowed, return 403 and do NOT delete.
     """
-    get_object_or_404(Album, pk=album_id)
-    return HttpResponse("Delete album")
-
+    album = get_object_or_404(Album, pk=album_id)
+    user = request.user
+    duser = get_dottify_user_or_none(user)
+    is_artist = user.groups.filter(name="Artist").exists()
+    is_dottify_admin = user.is_superuser or user.groups.filter(name="DottifyAdmin").exists()
+    owns_album = (duser and album.artist_name == duser.display_name)
+    allowed = is_dottify_admin or (is_artist and owns_album)
+    if not allowed:
+        return HttpResponse("Forbidden", status=403)
+    if request.method == "POST":
+        album.delete()
+        return redirect('album-list')
+    return render(request, "dottify/album_confirm_delete.html", {"album": album})
 
 @login_required
 def song_new(request):
