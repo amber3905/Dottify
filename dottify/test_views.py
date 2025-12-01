@@ -66,3 +66,18 @@ class DottifyViewTests(TestCase):
         self.assertEqual(resp.status_code, 302)
         expected_path = f"/users/{self.duser.id}/{self.duser.display_name.lower()}/"
         self.assertIn(expected_path, resp["Location"])
+
+    def test_album_detail_by_id_is_public(self):
+        resp = self.client.get(f"/albums/{self.album.id}/")
+        self.assertEqual(resp.status_code, 200)
+        html = resp.content.decode()
+        self.assertIn(self.album.title, html)
+        self.assertIn("Test Song", html)
+
+    def test_album_detail_with_slug_is_public_and_not_validated(self):
+        wrong_slug = "this-is-wrong"
+        resp = self.client.get(f"/albums/{self.album.id}/{wrong_slug}/")
+        self.assertEqual(resp.status_code, 200)
+        html = resp.content.decode()
+        self.assertIn(self.album.title, html)
+        self.assertIn("Test Song", html)

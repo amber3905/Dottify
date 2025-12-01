@@ -123,6 +123,28 @@ def album_search(request):
     titles = ", ".join(a.title for a in albums)
     return HttpResponse(titles or "No results")
 
+def _build_album_detail_context(album):
+    """
+    Internal helper to build album detail context, including songs and ratings.
+    Used by both /albums/<id>/ and /albums/<id>/<slug>/ routes.
+    """
+    songs = album.song_set.all()
+
+    ratings = Rating.objects.filter(album=album, value__isnull=False)
+    avg_all = avg_recent = None
+    if ratings.exists():
+        avg_all = sum(r.value for r in ratings) / ratings.count()
+        seven_days_ago = timezone.now() - timedelta(days=7)
+        recent = ratings.filter(user__user__date_joined__gte=seven_days_ago) if ratings.exists() else ratings
+        if recent.exists():
+            avg_recent = sum(r.value for r in recent) / recent.count()
+
+    return {
+        'album': album,
+        'songs': songs,
+        'avg_all': avg_all,
+        'avg_recent': avg_recent,
+    }
 
 def album_detail_by_id(request, album_id):
     """
@@ -132,46 +154,22 @@ def album_detail_by_id(request, album_id):
     - Average rating over all time.
     - Average rating for recent ratings (last 7 days).
 
-    These values are displayed exactly as required in Sheet D.
+    Songs are listed on the page.
     """
     album = get_object_or_404(Album, pk=album_id)
-    songs = album.song_set.all()
-
-    ratings = Rating.objects.filter(album=album, value__isnull=False)
-    avg_all = avg_recent = None
-    if ratings.exists():
-        avg_all = sum(r.value for r in ratings) / ratings.count()
-
-        # For now we use all ratings as "recent" once filtered to the
-        # last 7 days. The time window is controlled here so it can be
-        # adjusted without changing the template.
-        seven_days_ago = timezone.now() - timedelta(days=7)
-        recent = ratings.filter(user__user__date_joined__gte=seven_days_ago) if ratings.exists() else ratings
-        if recent.exists():
-            avg_recent = sum(r.value for r in recent) / recent.count()
-
-    context = {
-        'album': album,
-        'songs': songs,
-        'avg_all': avg_all,
-        'avg_recent': avg_recent,
-    }
+    context = _build_album_detail_context(album)
     return render(request, 'dottify/album_detail.html', context)
-
 
 def album_detail_with_slug(request, album_id, slug):
     """
-    SEO-friendly album detail route with slug.
+    Detail page for a single album using an optional slug in the URL.
 
-    If the slug does not match the album title, we redirect to the
-    canonical URL (which keeps URLs stable and satisfies the tests).
+    The slug is based on the album title but is NOT validated:
+    any slug (or even a wrong slug) will still display the album details.
     """
     album = get_object_or_404(Album, pk=album_id)
-    expected = slugify(album.title)
-    if slug != expected:
-        return HttpResponseRedirect(f"/albums/{album_id}/{expected}/")
-    return HttpResponse(f"Album: {album.title}")
-
+    context = _build_album_detail_context(album)
+    return render(request, 'dottify/album_detail.html', context)
 
 @login_required
 def album_edit(request, album_id):
