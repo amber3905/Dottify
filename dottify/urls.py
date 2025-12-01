@@ -24,11 +24,11 @@ urlpatterns = [
     path('albums/', views.album_list, name='album-list')
     ,
     path('albums/new/', views.album_create, name='album-create'),
+    path('albums/<int:album_id>/edit/', views.album_edit, name='album-edit'),
+    path('albums/<int:album_id>/delete/', views.album_delete, name='album-delete'),
     path('albums/search/', views.album_search, name='album-search'),
     path('albums/<int:album_id>/', views.album_detail_by_id, name='album-detail-id'),
     path('albums/<int:album_id>/<slug:slug>/', views.album_detail_with_slug, name='album-detail-slug'),
-    path('albums/<int:album_id>/edit/', views.album_edit, name='album-edit'),
-    path('albums/<int:album_id>/delete/', views.album_delete, name='album-delete'),
 
     # Song routes
     path('songs/', views.song_list, name='song-list'),

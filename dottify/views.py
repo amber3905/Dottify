@@ -174,14 +174,47 @@ def album_detail_with_slug(request, album_id, slug):
 @login_required
 def album_edit(request, album_id):
     """
-    Placeholder edit endpoint. Only checks that the album exists.
+    Edit an existing album.
 
-    For this coursework we do not need full edit functionality, but
-    the route must exist and be protected.
+    Rules (Sheet D):
+
+    - User must be logged in (enforced by @login_required).
+    - User must be in the Artist or DottifyAdmin group.
+    - If user is in Artist group, the album must belong to them:
+      we treat an album as belonging to an artist if
+      album.artist_name == DottifyUser.display_name.
+    - Ownership is checked on both GET (when showing the form)
+      and POST (when saving changes).
+    - If the user is not allowed, return 403 and do NOT save.
     """
-    get_object_or_404(Album, pk=album_id)
-    return HttpResponse("Edit album")
+    album = get_object_or_404(Album, pk=album_id)
+    user = request.user
+    duser = get_dottify_user_or_none(user)
 
+    is_artist = user.groups.filter(name="Artist").exists()
+    is_dottify_admin = user.is_superuser or user.groups.filter(name="DottifyAdmin").exists()
+
+    # Must be Artist or DottifyAdmin
+    if not (is_artist or is_dottify_admin):
+        return HttpResponse("Forbidden", status=403)
+
+    # If Artist, album must "belong" to them
+    # (artist_name matches their DottifyUser display_name)
+    if is_artist and (not duser or album.artist_name != duser.display_name):
+        return HttpResponse("Forbidden", status=403)
+
+    if request.method == "POST":
+        form = AlbumForm(request.POST, request.FILES, instance=album)
+        if form.is_valid():
+            # Re-check on submit before saving (spec says check on POST too)
+            if is_artist and (not duser or album.artist_name != duser.display_name):
+                return HttpResponse("Forbidden", status=403)
+            form.save()
+            return redirect('album-detail-id', album_id=album.id)
+    else:
+        form = AlbumForm(instance=album)
+
+    return render(request, 'dottify/album_form.html', {'form': form, 'album': album})
 
 @login_required
 def album_delete(request, album_id):
