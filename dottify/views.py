@@ -236,18 +236,32 @@ def album_delete(request, album_id):
 def song_new(request):
     """
     Create a new song.
-
-    Again, restricted to authenticated users as this mutates state.
+    Rules:
+    - User must be logged in.
+    - User must be in the Artist or DottifyAdmin group.
+    - If user is in Artist group, the chosen album must belong to them
+      (album.artist_name == DottifyUser.display_name). This is checked
+      on submit (POST). If it does not match, return 403 and do not save.
     """
+    user = request.user
+    duser = get_dottify_user_or_none(user)
+    is_artist = user.groups.filter(name="Artist").exists()
+    is_dottify_admin = user.is_superuser or user.groups.filter(name="DottifyAdmin").exists()
+    if not (is_artist or is_dottify_admin):
+        return HttpResponse("Forbidden", status=403)
     if request.method == "POST":
         form = SongForm(request.POST)
         if form.is_valid():
-            song = form.save()
+            song = form.save(commit=False)
+            album = song.album
+            if is_artist:
+                if not duser or album.artist_name != duser.display_name:
+                    return HttpResponse("Forbidden", status=403)
+            song.save()
             return redirect('song-detail', song_id=song.id)
     else:
         form = SongForm()
     return render(request, 'dottify/song_form.html', {'form': form})
-
 
 def song_detail(request, song_id):
     """

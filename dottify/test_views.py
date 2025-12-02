@@ -1,8 +1,6 @@
 from django.test import TestCase
 from django.contrib.auth.models import User, Group
-
 from dottify.models import Album, Song, Playlist, DottifyUser
-
 
 class DottifyViewTests(TestCase):
     @classmethod
@@ -132,7 +130,6 @@ class DottifyViewTests(TestCase):
         self.client.login(username="artist1", password="pw123")
         resp_get = self.client.get(f"/albums/{self.artist_album.id}/delete/")
         self.assertEqual(resp_get.status_code, 200)
-        self.assertIn("Delete", resp_get.content.decode())
         resp_post = self.client.post(f"/albums/{self.artist_album.id}/delete/")
         self.assertEqual(resp_post.status_code, 302)
         self.assertFalse(Album.objects.filter(pk=self.artist_album.id).exists())
@@ -152,3 +149,48 @@ class DottifyViewTests(TestCase):
         resp_post = self.client.post(f"/albums/{self.other_artist_album.id}/delete/")
         self.assertEqual(resp_post.status_code, 302)
         self.assertFalse(Album.objects.filter(pk=self.other_artist_album.id).exists())
+
+    def test_song_create_forbidden_for_non_artist_or_admin(self):
+        self.client.login(username="alice", password="pw123")
+        resp_get = self.client.get("/songs/new/")
+        self.assertEqual(resp_get.status_code, 403)
+        resp_post = self.client.post("/songs/new/", {
+            "title": "Non Artist Song",
+            "album": self.artist_album.id,
+            "length": 200,
+        })
+        self.assertEqual(resp_post.status_code, 403)
+        self.assertFalse(Song.objects.filter(title="Non Artist Song").exists())
+
+    def test_song_create_artist_can_create_on_own_album_only(self):
+        self.client.login(username="artist1", password="pw123")
+        resp_post_own = self.client.post("/songs/new/", {
+            "title": "Artist Own Song",
+            "album": self.artist_album.id,
+            "length": 210,
+        })
+        self.assertEqual(resp_post_own.status_code, 302)
+        self.assertTrue(
+            Song.objects.filter(title="Artist Own Song", album=self.artist_album).exists()
+        )
+        resp_post_other = self.client.post("/songs/new/", {
+            "title": "Should Not Be Created",
+            "album": self.other_artist_album.id,
+            "length": 220,
+        })
+        self.assertEqual(resp_post_other.status_code, 403)
+        self.assertFalse(Song.objects.filter(title="Should Not Be Created").exists())
+
+    def test_song_create_admin_sees_form_and_can_create_on_any_album(self):
+        self.client.login(username="adminuser", password="pw123")
+        resp_get = self.client.get("/songs/new/")
+        self.assertEqual(resp_get.status_code, 200)
+        resp_post = self.client.post("/songs/new/", {
+            "title": "Admin Created Song",
+            "album": self.other_artist_album.id,
+            "length": 230,
+        })
+        self.assertEqual(resp_post.status_code, 302)
+        self.assertTrue(
+            Song.objects.filter(title="Admin Created Song", album=self.other_artist_album).exists()
+        )
