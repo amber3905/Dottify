@@ -274,7 +274,6 @@ def song_detail(request, song_id):
 def song_list(request):
     """
     List all songs.
-
     Sheet D requires a 'Total results found: N' counter somewhere a
     song list is displayed; the template uses `count` for this.
     """
@@ -386,15 +385,22 @@ def user_detail_redirect(request, user_id):
 def user_detail_slug(request, user_id, slug):
     """
     User profile page.
-
     If the slug is wrong we redirect to the correct one, but we always
     look up the user by numeric id to avoid security issues.
+
+    Playlist visibility rules on this page:
+    - If the logged-in user *owns* this profile, they see ALL their playlists.
+    - Anyone else (including anonymous users) only sees PUBLIC playlists.
     """
     duser = get_object_or_404(DottifyUser, pk=user_id)
-    playlists = duser.playlist_set.all()
     correct_slug = slugify(duser.display_name)
     if slug != correct_slug:
         return redirect('user-detail-slug', user_id=user_id, slug=correct_slug)
+    viewer = get_dottify_user_or_none(request.user)
+    if viewer and viewer.id == duser.id:
+        playlists = duser.playlist_set.all()
+    else:
+        playlists = duser.playlist_set.filter(visibility=2)
     return render(
         request,
         'dottify/user_detail.html',

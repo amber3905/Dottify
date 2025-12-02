@@ -308,3 +308,34 @@ class DottifyViewTests(TestCase):
         resp_post = self.client.post(f"/songs/{self.other_artist_song.id}/delete/")
         self.assertEqual(resp_post.status_code, 302)
         self.assertFalse(Song.objects.filter(pk=self.other_artist_song.id).exists())
+
+    def test_user_profile_anonymous_sees_only_public_playlists(self):
+        self.playlist.visibility = 0
+        self.playlist.save()
+        public_pl = Playlist.objects.create(
+            name="Public Playlist",
+            owner=self.duser,
+            visibility=2,
+        )
+        slug = self.duser.display_name.lower()
+        resp = self.client.get(f"/users/{self.duser.id}/{slug}/")
+        self.assertEqual(resp.status_code, 200)
+        html = resp.content.decode()
+        self.assertIn(public_pl.name, html)
+        self.assertNotIn(self.playlist.name, html)
+
+    def test_user_profile_owner_sees_all_playlists(self):
+        self.playlist.visibility = 0
+        self.playlist.save()
+        public_pl = Playlist.objects.create(
+            name="Public Playlist",
+            owner=self.duser,
+            visibility=2,
+        )
+        slug = self.duser.display_name.lower()
+        self.client.login(username="alice", password="pw123")
+        resp = self.client.get(f"/users/{self.duser.id}/{slug}/")
+        self.assertEqual(resp.status_code, 200)
+        html = resp.content.decode()
+        self.assertIn(self.playlist.name, html)
+        self.assertIn(public_pl.name, html)
