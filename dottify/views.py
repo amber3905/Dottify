@@ -129,16 +129,14 @@ def _build_album_detail_context(album):
     Used by both /albums/<id>/ and /albums/<id>/<slug>/ routes.
     """
     songs = album.song_set.all()
-
     ratings = Rating.objects.filter(album=album, value__isnull=False)
     avg_all = avg_recent = None
     if ratings.exists():
         avg_all = sum(r.value for r in ratings) / ratings.count()
         seven_days_ago = timezone.now() - timedelta(days=7)
-        recent = ratings.filter(user__user__date_joined__gte=seven_days_ago) if ratings.exists() else ratings
+        recent = ratings.filter(created_at__gte=seven_days_ago)
         if recent.exists():
             avg_recent = sum(r.value for r in recent) / recent.count()
-
     return {
         'album': album,
         'songs': songs,

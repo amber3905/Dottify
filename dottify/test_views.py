@@ -1,6 +1,8 @@
 from django.test import TestCase
 from django.contrib.auth.models import User, Group
-from dottify.models import Album, Song, Playlist, DottifyUser
+from dottify.models import Album, Song, Playlist, DottifyUser, Rating
+from django.utils import timezone
+from datetime import timedelta
 
 class DottifyViewTests(TestCase):
     @classmethod
@@ -339,3 +341,28 @@ class DottifyViewTests(TestCase):
         html = resp.content.decode()
         self.assertIn(self.playlist.name, html)
         self.assertIn(public_pl.name, html)
+
+    def test_album_detail_recent_ratings_use_created_at(self):
+        """
+        Recent rating average should only include ratings from the last 7 days,
+        based on Rating.created_at.
+        """
+        Rating.objects.all().delete()
+        old = Rating.objects.create(
+            album=self.album,
+            user=self.duser,
+            value=4,
+        )
+        old.created_at = timezone.now() - timedelta(days=10)
+        old.save(update_fields=["created_at"])
+        recent = Rating.objects.create(
+            album=self.album,
+            user=self.duser,
+            value=2,
+        )
+        resp = self.client.get(f"/albums/{self.album.id}/")
+        self.assertEqual(resp.status_code, 200)
+        avg_all = resp.context["avg_all"]
+        avg_recent = resp.context["avg_recent"]
+        self.assertAlmostEqual(avg_all, (4 + 2) / 2)
+        self.assertAlmostEqual(avg_recent, 2.0)
