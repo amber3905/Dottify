@@ -255,3 +255,40 @@ class DottifyViewTests(TestCase):
         self.assertTrue(
             Song.objects.filter(pk=self.other_artist_song.id, title="Admin Edited Song").exists()
         )
+
+    def test_song_delete_redirects_anonymous_to_login(self):
+        resp = self.client.get(f"/songs/{self.artist_song.id}/delete/")
+        self.assertEqual(resp.status_code, 302)
+        self.assertTrue(Song.objects.filter(pk=self.artist_song.id).exists())
+
+    def test_song_delete_forbidden_for_normal_user(self):
+        self.client.login(username="alice", password="pw123")
+        resp = self.client.get(f"/songs/{self.artist_song.id}/delete/")
+        self.assertEqual(resp.status_code, 403)
+        resp_post = self.client.post(f"/songs/{self.artist_song.id}/delete/")
+        self.assertEqual(resp_post.status_code, 403)
+        self.assertTrue(Song.objects.filter(pk=self.artist_song.id).exists())
+
+    def test_song_delete_allowed_for_artist_owner(self):
+        self.client.login(username="artist1", password="pw123")
+        resp_get = self.client.get(f"/songs/{self.artist_song.id}/delete/")
+        self.assertEqual(resp_get.status_code, 200)
+        resp_post = self.client.post(f"/songs/{self.artist_song.id}/delete/")
+        self.assertEqual(resp_post.status_code, 302)
+        self.assertFalse(Song.objects.filter(pk=self.artist_song.id).exists())
+
+    def test_song_delete_forbidden_for_non_owner_artist(self):
+        self.client.login(username="artist1", password="pw123")
+        resp_get = self.client.get(f"/songs/{self.other_artist_song.id}/delete/")
+        self.assertEqual(resp_get.status_code, 403)
+        resp_post = self.client.post(f"/songs/{self.other_artist_song.id}/delete/")
+        self.assertEqual(resp_post.status_code, 403)
+        self.assertTrue(Song.objects.filter(pk=self.other_artist_song.id).exists())
+
+    def test_song_delete_allowed_for_dottifyadmin(self):
+        self.client.login(username="adminuser", password="pw123")
+        resp_get = self.client.get(f"/songs/{self.other_artist_song.id}/delete/")
+        self.assertEqual(resp_get.status_code, 200)
+        resp_post = self.client.post(f"/songs/{self.other_artist_song.id}/delete/")
+        self.assertEqual(resp_post.status_code, 302)
+        self.assertFalse(Song.objects.filter(pk=self.other_artist_song.id).exists())

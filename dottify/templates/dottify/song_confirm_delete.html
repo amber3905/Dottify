@@ -1,0 +1,12 @@
+{% extends "dottify/base.html" %}
+
+{% block content %}
+  <h1>Delete Song: {{ song.title }}</h1>
+  <p>Are you sure you want to delete this song?</p>
+
+  <form method="post">
+    {% csrf_token %}
+    <button type="submit">Yes, delete</button>
+    <a href="{% url 'song-detail' song_id=song.id %}">Cancel</a>
+  </form>
+{% endblock %}
