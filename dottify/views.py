@@ -285,11 +285,24 @@ def song_list(request):
 
 @login_required
 def song_edit(request, song_id):
-    """
-    Placeholder edit endpoint for songs.
-    """
-    get_object_or_404(Song, pk=song_id)
-    return HttpResponse("Edit song")
+    song = get_object_or_404(Song, pk=song_id)
+    album = song.album
+    user = request.user
+    duser = get_dottify_user_or_none(user)
+    is_artist = user.groups.filter(name="Artist").exists()
+    is_dottify_admin = user.is_superuser or user.groups.filter(name="DottifyAdmin").exists()
+    owns_album = duser and album.artist_name == duser.display_name
+    allowed = is_dottify_admin or (is_artist and owns_album)
+    if not allowed:
+        return HttpResponse("Forbidden", status=403)
+    if request.method == "POST":
+        form = SongForm(request.POST, instance=song)
+        if form.is_valid():
+            song = form.save()
+            return redirect('song-detail', song_id=song.id)
+    else:
+        form = SongForm(instance=song)
+    return render(request, 'dottify/song_form.html', {'form': form, 'song': song})
 
 
 @login_required

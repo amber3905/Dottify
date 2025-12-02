@@ -43,6 +43,11 @@ class DottifyViewTests(TestCase):
             title="Artist One Album",
             artist_name="Artist One",
         )
+        cls.artist_song = Song.objects.create(
+            title="Artist Song",
+            album=cls.artist_album,
+            length=200,
+        )
         cls.other_artist_user = User.objects.create_user(
             username="artist2",
             password="pw123",
@@ -56,6 +61,11 @@ class DottifyViewTests(TestCase):
         cls.other_artist_album = Album.objects.create(
             title="Other Artist Album",
             artist_name="Other Artist",
+        )
+        cls.other_artist_song = Song.objects.create(
+            title="Other Artist Song",
+            album=cls.other_artist_album,
+            length=210,
         )
         cls.admin_user = User.objects.create_user(
             username="adminuser",
@@ -193,4 +203,55 @@ class DottifyViewTests(TestCase):
         self.assertEqual(resp_post.status_code, 302)
         self.assertTrue(
             Song.objects.filter(title="Admin Created Song", album=self.other_artist_album).exists()
+        )
+
+    def test_song_edit_redirects_anonymous_to_login(self):
+        resp = self.client.get(f"/songs/{self.artist_song.id}/edit/")
+        self.assertEqual(resp.status_code, 302)
+
+    def test_song_edit_forbidden_for_normal_user(self):
+        self.client.login(username="alice", password="pw123")
+        resp = self.client.get(f"/songs/{self.artist_song.id}/edit/")
+        self.assertEqual(resp.status_code, 403)
+
+    def test_song_edit_allowed_for_artist_owner(self):
+        self.client.login(username="artist1", password="pw123")
+        resp_get = self.client.get(f"/songs/{self.artist_song.id}/edit/")
+        self.assertEqual(resp_get.status_code, 200)
+        resp_post = self.client.post(f"/songs/{self.artist_song.id}/edit/", {
+            "title": "Updated Artist Song",
+            "album": self.artist_album.id,
+            "length": 222,
+        })
+        self.assertEqual(resp_post.status_code, 302)
+        self.assertTrue(
+            Song.objects.filter(pk=self.artist_song.id, title="Updated Artist Song").exists()
+        )
+
+    def test_song_edit_forbidden_for_non_owner_artist(self):
+        self.client.login(username="artist1", password="pw123")
+        resp_get = self.client.get(f"/songs/{self.other_artist_song.id}/edit/")
+        self.assertEqual(resp_get.status_code, 403)
+        resp_post = self.client.post(f"/songs/{self.other_artist_song.id}/edit/", {
+            "title": "Should Not Change",
+            "album": self.other_artist_album.id,
+            "length": 300,
+        })
+        self.assertEqual(resp_post.status_code, 403)
+        self.assertFalse(
+            Song.objects.filter(pk=self.other_artist_song.id, title="Should Not Change").exists()
+        )
+
+    def test_song_edit_allowed_for_dottifyadmin(self):
+        self.client.login(username="adminuser", password="pw123")
+        resp_get = self.client.get(f"/songs/{self.other_artist_song.id}/edit/")
+        self.assertEqual(resp_get.status_code, 200)
+        resp_post = self.client.post(f"/songs/{self.other_artist_song.id}/edit/", {
+            "title": "Admin Edited Song",
+            "album": self.other_artist_album.id,
+            "length": 333,
+        })
+        self.assertEqual(resp_post.status_code, 302)
+        self.assertTrue(
+            Song.objects.filter(pk=self.other_artist_song.id, title="Admin Edited Song").exists()
         )
