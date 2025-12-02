@@ -27,6 +27,7 @@ class DottifyViewTests(TestCase):
             name="My Playlist",
             owner=cls.duser,
         )
+        cls.playlist.songs.add(cls.song)
         cls.artist_group, _ = Group.objects.get_or_create(name="Artist")
         cls.dottify_admin_group, _ = Group.objects.get_or_create(name="DottifyAdmin")
         cls.artist_user = User.objects.create_user(
@@ -109,6 +110,21 @@ class DottifyViewTests(TestCase):
         self.assertEqual(resp.status_code, 302)
         expected_path = f"/users/{self.duser.id}/{self.duser.display_name.lower()}/"
         self.assertIn(expected_path, resp["Location"])
+
+    def test_user_detail_id_only_redirects_to_slug(self):
+        resp = self.client.get(f"/users/{self.duser.id}/")
+        self.assertEqual(resp.status_code, 302)
+        expected_path = f"/users/{self.duser.id}/{self.duser.display_name.lower()}/"
+        self.assertIn(expected_path, resp["Location"])
+
+    def test_user_detail_slug_shows_playlists_and_songs(self):
+        slug = self.duser.display_name.lower()
+        resp = self.client.get(f"/users/{self.duser.id}/{slug}/")
+        self.assertEqual(resp.status_code, 200)
+        html = resp.content.decode()
+        self.assertIn(self.duser.display_name, html)
+        self.assertIn(self.playlist.name, html)
+        self.assertIn(self.song.title, html)
 
     def test_album_detail_by_id_is_public(self):
         resp = self.client.get(f"/albums/{self.album.id}/")
